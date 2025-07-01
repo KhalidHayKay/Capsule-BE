@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER: '${USER:-capsule}'
+        USER_ID: '${WWWUSER:-1000}'
+        GROUP_ID: '${WWWGROUP:-1000}'
+    container_name: capsule-backend
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ../src/:/var/www
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ../src/:/var/www
+      - ./nginx:/etc/nginx/conf.d
+  db:
+    image: mariadb:11.3
+    container_name: capsule-db
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - ./storage/mysql:/var/lib/mysql
