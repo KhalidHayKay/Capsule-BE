@@ -1,32 +1,41 @@
-FROM php:8.4-fpm-alpine
+FROM php:8.3-fpm-alpine
 
-ARG USER
-ARG USER_ID
-ARG GROUP_ID
-
-RUN apk add --no-cache \
+# Update & install system deps
+RUN apk update && apk add --no-cache \
     git \
     zip \
     unzip \
     curl \
-    libzip-dev \
+    libpng-dev \
+    libxml2-dev \
     icu-dev \
+    oniguruma-dev \
     bash \
-    shadow \
-    su-exec
+    mysql-client \
+    nodejs \
+    npm
 
-RUN docker-php-ext-configure intl \
-    && docker-php-ext-install pdo pdo_mysql intl
-
-RUN docker-php-ext-install pcntl
+# PHP extensions
+RUN docker-php-ext-install pdo pdo_mysql intl mbstring xml
 
 # Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Create user
-RUN groupadd --force -g $GROUP_ID $USER
-RUN useradd -ms /bin/bash --no-user-group -g $GROUP_ID -u 1337 $USER
-RUN usermod -u $USER_ID $USER
-
+# Set working directory
 WORKDIR /var/www
-USER $USER
+
+# Copy Laravel source
+COPY ./src /var/www
+
+# Permissions
+RUN chown -R www-data:www-data /var/www \
+    && chmod -R 755 /var/www
+
+# Laravel dependencies
+RUN composer install --no-dev --optimize-autoloader \
+    && php artisan config:clear \
+    && php artisan route:clear
+
+EXPOSE 8080
+
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
