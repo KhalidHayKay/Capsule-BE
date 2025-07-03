@@ -11,7 +11,9 @@ RUN apk update && apk add --no-cache \
     icu-dev \
     oniguruma-dev \
     bash \
-    mysql-client
+    mysql-client \
+    nginx \
+    supervisor
 
 # PHP extensions
 RUN docker-php-ext-install pdo pdo_mysql intl mbstring xml
@@ -34,27 +36,13 @@ RUN composer install --no-dev --optimize-autoloader \
     && php artisan config:clear \
     && php artisan route:clear
 
-FROM nginx:alpine
-
-# Copy built app from laravel-build stage
-COPY --from=laravel-build /var/www /var/www
-
-# Copy PHP-FPM binaries
-COPY --from=laravel-build /usr/local/etc/php-fpm.d /usr/local/etc/php-fpm.d
-COPY --from=laravel-build /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
-COPY --from=laravel-build /usr/local/bin/php /usr/local/bin/php
-
 # Copy nginx config
-COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/production.conf /etc/nginx/nginx.conf
 
 # Copy entrypoint to start both php-fpm and nginx
-COPY ./start.sh /start.sh
+COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh
-
-# Set working directory
-WORKDIR /var/www
 
 EXPOSE 80
 
 CMD ["/start.sh"]
-
