@@ -1,4 +1,4 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.4-fpm-alpine AS laravel-build
 
 # Update & install system deps
 RUN apk update && apk add --no-cache \
@@ -36,13 +36,13 @@ RUN composer install --no-dev --optimize-autoloader \
 
 FROM nginx:alpine
 
-# Copy built app from backend stage
-COPY --from=backend /var/www /var/www
+# Copy built app from laravel-build stage
+COPY --from=laravel-build /var/www /var/www
 
 # Copy PHP-FPM binaries
-COPY --from=backend /usr/local/etc/php-fpm.d /usr/local/etc/php-fpm.d
-COPY --from=backend /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
-COPY --from=backend /usr/local/bin/php /usr/local/bin/php
+COPY --from=laravel-build /usr/local/etc/php-fpm.d /usr/local/etc/php-fpm.d
+COPY --from=laravel-build /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
+COPY --from=laravel-build /usr/local/bin/php /usr/local/bin/php
 
 # Copy nginx config
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
