@@ -11,9 +11,7 @@ RUN apk update && apk add --no-cache \
     icu-dev \
     oniguruma-dev \
     bash \
-    mysql-client \
-    nodejs \
-    npm
+    mysql-client
 
 # PHP extensions
 RUN docker-php-ext-install pdo pdo_mysql intl mbstring xml
@@ -36,6 +34,27 @@ RUN composer install --no-dev --optimize-autoloader \
     && php artisan config:clear \
     && php artisan route:clear
 
-EXPOSE 8080
+FROM nginx:alpine
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
+# Copy built app from backend stage
+COPY --from=backend /var/www /var/www
+
+# Copy PHP-FPM binaries
+COPY --from=backend /usr/local/etc/php-fpm.d /usr/local/etc/php-fpm.d
+COPY --from=backend /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
+COPY --from=backend /usr/local/bin/php /usr/local/bin/php
+
+# Copy nginx config
+COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy entrypoint to start both php-fpm and nginx
+COPY ./start.sh /start.sh
+RUN chmod +x /start.sh
+
+# Set working directory
+WORKDIR /var/www
+
+EXPOSE 80
+
+CMD ["/start.sh"]
+
