@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\RegisterUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\FirebaseAuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -33,6 +34,39 @@ class AuthController extends Controller
         ]);
     }
 
+    public function socialLogin(Request $request, FirebaseAuthService $firebase)
+    {
+        $request->validate([
+            'firebase_token' => 'required|string',
+        ]);
+
+        $userData = $firebase->getUserData($request->firebase_token);
+
+        if (! $userData) {
+            return response()->json(['message' => 'Invalid Firebase token'], 401);
+        }
+
+        $user = User::firstOrCreate(
+            ['email' => $userData['email']],
+            [
+                'name'          => $userData['name'] ?? $userData['email'],
+                'password'      => bcrypt(str()->random(24)),
+                'avatar'        => $userData['avatar'] ?? null,
+
+                'firebase_uid'  => $userData['uid'],
+                'auth_provider' => $userData['provider'],
+            ]
+        );
+
+        $newlyCreated = $user->wasRecentlyCreated;
+
+        return response()->json([
+            'message' => $newlyCreated ? 'User registered successfully' : 'Login successful',
+            'user'    => new UserResource($user),
+            'token'   => $this->makeToken($user)->plainTextToken,
+        ], 201);
+    }
+
     public function register(RegisterUserRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -45,29 +79,6 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'User registered successfully',
-            'user'    => new UserResource($user),
-            'token'   => $this->makeToken($user)->plainTextToken,
-        ], 201);
-    }
-
-    public function socialLogin(Request $request): JsonResponse
-    {
-        $validated = $request->validated();
-
-        $user = User::firstOrCreate(
-            [
-                'provider'    => $validated['provider'],
-                'provider_id' => $validated['provider_id'],
-            ],
-            [
-                'email'  => $validated['email'] ?? null,
-                'name'   => $validated['name'] ?? 'Unknown',
-                'avatar' => $validated['avatar'] ?? null,
-            ]
-        );
-
-        return response()->json([
-            'message' => 'Login successful',
             'user'    => new UserResource($user),
             'token'   => $this->makeToken($user)->plainTextToken,
         ], 201);
@@ -99,10 +110,6 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
-
-        if (! $user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
 
         return response()->json([
             'user' => new UserResource($user),

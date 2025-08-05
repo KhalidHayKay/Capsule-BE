@@ -16,10 +16,11 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique()->nullable();
             $table->string('password');
-            $table->string('provider')->nullable();
-            $table->string('provider_id')->nullable();
             $table->string('avatar')->nullable();
+            $table->string('firebase_uid')->nullable()->unique();
+            $table->string('auth_provider')->nullable();
             $table->timestamp('email_verified_at')->nullable();
+
             $table->rememberToken();
             $table->timestamps();
         });

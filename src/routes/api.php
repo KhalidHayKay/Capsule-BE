@@ -14,10 +14,8 @@ Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
     Route::post('social-login', [AuthController::class, 'socialLogin']);
-    Route::post('logout/{all?}', [AuthController::class, 'logout', true]);
-    Route::get('me', [AuthController::class, 'me']);
-})->middleware('auth:sanctum');
+    Route::post('logout/{all?}', [AuthController::class, 'logout'])
+        ->where('all', 'all');
+});
 
-// Route::group(['middleware' => 'auth:sanctum'], function () {
-//     Route::get('me', [AuthController::class, 'me']);
-// })->middleware('auth:sanctum');
+Route::get('me', [AuthController::class, 'me'])->middleware('auth:sanctum');
