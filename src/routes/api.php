@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\WaitlistController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,4 +10,12 @@ Route::controller(WaitlistController::class)->group(function () {
     Route::get('/waitlist', 'index');
 });
 
-Route::get('/users/all', [UserController::class, 'index']);
+Route::prefix('auth')->group(function () {
+    Route::post('login', [AuthController::class, 'login']);
+    Route::post('register', [AuthController::class, 'register']);
+    Route::post('social-login', [AuthController::class, 'socialLogin']);
+    Route::post('logout/{all?}', [AuthController::class, 'logout'])
+        ->where('all', 'all');
+});
+
+Route::get('me', [AuthController::class, 'me'])->middleware('auth:sanctum');

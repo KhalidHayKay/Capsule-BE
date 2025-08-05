@@ -15,10 +15,10 @@ class ForceJsonResponse
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $accept = $request->header('Accept');
+        $accept = strtolower($request->header('Accept'));
 
         // If Accept header is present and not JSON
-        if ($accept && stripos($accept, 'application/json') === false) {
+        if ($accept && stripos($accept, 'application/json') === false && ! $request->is('docs*')) {
             return response()->json([
                 'error' => 'Only Accept: application/json is supported.',
             ], 406);

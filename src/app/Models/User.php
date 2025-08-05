@@ -22,6 +22,10 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'avatar',
+        'auth_provider',
+        'firebase_uid',
+        'email_verified_at',
     ];
 
     /**
@@ -43,7 +47,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
+            'password'          => 'string',
         ];
     }
 }
