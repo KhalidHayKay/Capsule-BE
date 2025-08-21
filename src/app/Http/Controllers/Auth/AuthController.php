@@ -84,7 +84,7 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function logout(Request $request, $all = null): JsonResponse
+    public function logout(Request $request, $all): JsonResponse
     {
         $user = $request->user();
 
