@@ -16,6 +16,5 @@ Route::prefix('auth')->group(function () {
     Route::post('social-login', [AuthController::class, 'socialLogin']);
     Route::post('logout/{all?}', [AuthController::class, 'logout'])
         ->where('all', 'all');
+    Route::get('me', [AuthController::class, 'me'])->middleware('auth:sanctum');
 });
-
-Route::get('me', [AuthController::class, 'me'])->middleware('auth:sanctum');
