@@ -1,7 +1,13 @@
 #!/bin/sh
 
-# Start PHP-FPM in background
+# Exit immediately on error
+set -e
+
+echo "Running migrations against DB..."
+php artisan migrate --force
+
+echo "Starting PHP-FPM..."
 php-fpm -D
 
-# Start Nginx in foreground (container stays alive)
+echo "Starting Nginx..."
 nginx -g "daemon off;"

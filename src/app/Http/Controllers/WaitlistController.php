@@ -24,11 +24,7 @@ class WaitlistController extends Controller
     {
         $data = $request->validated();
 
-        $entry = Waitlist::create([
-            'email'       => $data['email'],
-            'name'        => $data['name'],
-            'referred_by' => $data['referred_by'],
-        ]);
+        $entry = Waitlist::create($data);
 
         $referralLink = config('frontend.url') . '/waitlist?ref=' . $entry->referral_code;
 

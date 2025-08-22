@@ -2,13 +2,15 @@
 
 namespace App\Mail;
 
+use App\Support\MailSubjects;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
 
-class WaitlistConfirmation extends Mailable
+class PasswordReset extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -16,8 +18,8 @@ class WaitlistConfirmation extends Mailable
      * Create a new message instance.
      */
     public function __construct(
-        readonly protected string|null $name = null,
-        readonly protected string $referralLink,
+        readonly private string $name,
+        readonly private string $code,
     ) {
         //
     }
@@ -28,7 +30,7 @@ class WaitlistConfirmation extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "You're on the waitlist! 🎉",
+            subject: MailSubjects::PASSWORD_RESET,
         );
     }
 
@@ -38,10 +40,10 @@ class WaitlistConfirmation extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'mail.waitlist-confirmation',
+            view: 'mail.password-reset',
             with: [
-                'name'         => $this->name,
-                'referralLink' => $this->referralLink,
+                'name' => $this->name,
+                'code' => $this->code,
             ]
         );
     }

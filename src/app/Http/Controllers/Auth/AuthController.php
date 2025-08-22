@@ -86,11 +86,9 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
-        $user = User::create([
-            'name'     => $data['name'],
-            'email'    => $data['email'],
-            'password' => bcrypt($data['password']),
-        ]);
+        $data['password'] = bcrypt($data['password']);
+
+        $user = User::create($data);
 
         $this->sendEmailVerificationCode($user);
 
@@ -101,7 +99,7 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function logout(Request $request, $all): JsonResponse
+    public function logout(Request $request, string|null $all = null): JsonResponse
     {
         $user = $request->user();
 
