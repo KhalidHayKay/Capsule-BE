@@ -23,7 +23,7 @@ class WaitlistConfirmation extends Mailable
      */
     public function __construct(
         readonly protected string|null $name = null,
-        readonly protected string|null $referralLink = null,
+        readonly protected string $referralLink,
     ) {
         //
     }
@@ -65,7 +65,7 @@ class WaitlistConfirmation extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'mails.waitlist_confirmation',
+            view: 'mail.waitlist-confirmation',
             with: [
                 'name'         => $this->name,
                 'referralLink' => $this->referralLink,
