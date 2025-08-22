@@ -2,13 +2,15 @@
 
 namespace App\Mail;
 
+use App\Support\MailSubjects;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
 
-class WaitlistConfirmation extends Mailable
+class EmailVerification extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -17,7 +19,7 @@ class WaitlistConfirmation extends Mailable
      */
     public function __construct(
         readonly protected string|null $name = null,
-        readonly protected string $referralLink,
+        readonly protected string $code,
     ) {
         //
     }
@@ -28,7 +30,7 @@ class WaitlistConfirmation extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "You're on the waitlist! 🎉",
+            subject: MailSubjects::VERIFY_EMAIL,
         );
     }
 
@@ -38,10 +40,10 @@ class WaitlistConfirmation extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'mail.waitlist-confirmation',
+            view: 'mail.email-verification',
             with: [
-                'name'         => $this->name,
-                'referralLink' => $this->referralLink,
+                'name' => $this->name,
+                'code' => $this->code,
             ]
         );
     }

@@ -22,9 +22,9 @@ class CreateWaitlistRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email'         => 'required|email|unique:waitlists,email',
-            'name'          => 'nullable|string|max:255',
-            'referral_code' => 'nullable|string|max:50',
+            'email'       => 'required|email|unique:waitlists,email',
+            'name'        => 'nullable|string|max:255',
+            'referred_by' => 'nullable|string|max:50',
         ];
     }
 }

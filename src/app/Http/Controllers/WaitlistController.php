@@ -14,22 +14,21 @@ class WaitlistController extends Controller
     {
         $lists = Waitlist::all(['email', 'name', 'referral_code']);
 
-        return response()->json($lists);
+        return response()->json([
+            'status' => 'success',
+            'data'   => $lists,
+        ], 200);
     }
 
     public function store(CreateWaitlistRequest $request)
     {
-        $request->validated();
+        $data = $request->validated();
 
-        $entry = Waitlist::create([
-            'email'       => $request->input('email'),
-            'name'        => $request->input('name'),
-            'referred_by' => $request->input('referred_by'),
-        ]);
+        $entry = Waitlist::create($data);
 
         $referralLink = config('frontend.url') . '/waitlist?ref=' . $entry->referral_code;
 
-        Mail::to('mail@example.com')->send(new WaitlistConfirmation(
+        Mail::to($entry->email)->send(new WaitlistConfirmation(
             $entry->name,
             $referralLink
         ));
@@ -37,15 +36,18 @@ class WaitlistController extends Controller
         return response()->json([
             'message' => 'Waitlist entry created successfully',
             'entry'   => [
-                    'name'  => $entry->name,
-                    'email' => $entry->email,
-                ],
+                'name'  => $entry->name,
+                'email' => $entry->email,
+            ],
         ], 201);
     }
 
     public function show(Waitlist $waitlist)
     {
-        return response()->json($waitlist);
+        return response()->json([
+            'status' => 'sucsess',
+            'data'   => $waitlist,
+        ], 200);
     }
 
     public function handle()

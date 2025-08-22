@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\RegisterUserRequest;
-use App\Http\Resources\UserResource;
 use App\Models\User;
-use App\Services\FirebaseAuthService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Mail\EmailVerification;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Request as RequestFacade;
+use Illuminate\Support\Facades\Mail;
+use App\Services\FirebaseAuthService;
+use App\Http\Requests\RegisterUserRequest;
+use App\Mail\AccountCreated;
 
 class AuthController extends Controller
 {
@@ -24,13 +27,21 @@ class AuthController extends Controller
         $user = User::where('email', $data['email'])->first();
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+            return response()->json(['message' => 'Invalid credentials',], 401);
+        }
+
+        if (! $user->email_verified_at) {
+            $this->sendEmailVerificationCode($user);
+
+            return response()->json([
+                'message' => 'Email not verified. Check your email for verification code',
+            ], 401);
         }
 
         return response()->json([
             'message' => 'Login successful',
             'user'    => new UserResource($user),
-            'token'   => $this->makeToken($user)->plainTextToken,
+            'token'   => $user->makeToken()->plainTextToken,
         ]);
     }
 
@@ -49,21 +60,25 @@ class AuthController extends Controller
         $user = User::firstOrCreate(
             ['email' => $userData['email']],
             [
-                'name'          => $userData['name'] ?? $userData['email'],
-                'password'      => bcrypt(str()->random(24)),
-                'avatar'        => $userData['avatar'] ?? null,
-
-                'firebase_uid'  => $userData['uid'],
-                'auth_provider' => $userData['provider'],
+                'name'              => $userData['name'] ?? $userData['email'],
+                'password'          => bcrypt(str()->random(24)),
+                'avatar'            => $userData['avatar'] ?? null,
+                'firebase_uid'      => $userData['uid'],
+                'auth_provider'     => $userData['provider'],
+                'email_verified_at' => now(),
             ]
         );
 
         $newlyCreated = $user->wasRecentlyCreated;
 
+        if ($newlyCreated) {
+            Mail::to($user->email)->send(new AccountCreated($user->name));
+        }
+
         return response()->json([
             'message' => $newlyCreated ? 'User registered successfully' : 'Login successful',
             'user'    => new UserResource($user),
-            'token'   => $this->makeToken($user)->plainTextToken,
+            'token'   => $user->makeToken()->plainTextToken,
         ], 201);
     }
 
@@ -71,20 +86,20 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
-        $user = User::create([
-            'name'     => $data['name'],
-            'email'    => $data['email'],
-            'password' => bcrypt($data['password']),
-        ]);
+        $data['password'] = bcrypt($data['password']);
+
+        $user = User::create($data);
+
+        $this->sendEmailVerificationCode($user);
 
         return response()->json([
-            'message' => 'User registered successfully',
+            'message' => 'User registered successfully. Check email for verification code',
             'user'    => new UserResource($user),
-            'token'   => $this->makeToken($user)->plainTextToken,
+            'token'   => $user->makeToken()->plainTextToken,
         ], 201);
     }
 
-    public function logout(Request $request, $all): JsonResponse
+    public function logout(Request $request, string|null $all = null): JsonResponse
     {
         $user = $request->user();
 
@@ -107,21 +122,32 @@ class AuthController extends Controller
         ], 200);
     }
 
-    public function me(Request $request): JsonResponse
+    private function sendEmailVerificationCode(User $user)
     {
-        $user = $request->user();
+        $code = rand(111111, 999999);
 
-        return response()->json([
-            'user' => new UserResource($user),
-        ], 200);
-    }
+        DB::table('email_verification_tokens')
+            ->updateOrInsert(
+                ['user_id' => $user->id],
+                [
+                    'token'      => Hash::make($code),
+                    'expires_at' => now()->addMinutes(20),
+                    'updated_at' => now(),
+                ]
+            );
 
-    public function makeToken(User $user)
-    {
-        $requestAgent = RequestFacade::header('User-Agent') ?? 'auth-token';
+        if ($user->wasRecentlyCreated) {
+            Mail::to($user->email)->send(new AccountCreated(
+                $user->name,
+                $code
+            ));
+        } else {
+            Mail::to($user->email)->send(new EmailVerification(
+                $user->name,
+                $code
+            ));
+        }
 
-        $user->tokens()->where('name', $requestAgent)->delete();
-
-        return $user->createToken($requestAgent);
+        return $code;
     }
 }
