@@ -1,4 +1,4 @@
-FROM php:8.4-fpm-alpine AS laravel-build
+FROM php:8.4-fpm-alpine
 
 # Update & install system deps
 RUN apk update && apk add --no-cache \
