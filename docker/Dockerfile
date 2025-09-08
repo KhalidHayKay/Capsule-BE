@@ -1,4 +1,4 @@
-FROM php:8.4-fpm-alpine AS laravel-build
+FROM php:8.4-fpm-alpine
 
 # Update & install system deps
 RUN apk update && apk add --no-cache \
@@ -24,16 +24,20 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www
 
-# Copy Laravel source
-COPY ./src /var/www
+# Copy composer files (layer caching)
+COPY composer.json composer.lock ./
+
+# Install dependencies
+RUN composer install --no-dev --optimize-autoloader
+
+# Copy the rest of the source
+COPY . .
 
 # Permissions
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www
+RUN chown -R www-data:www-data . && chmod -R 755 .
 
-# Laravel dependencies
-RUN composer install --no-dev --optimize-autoloader \
-    && php artisan config:clear \
+# Clear caches
+RUN php artisan config:clear \
     && php artisan route:clear
 
 # Copy nginx config
