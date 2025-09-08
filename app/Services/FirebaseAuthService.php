@@ -34,12 +34,13 @@ class FirebaseAuthService
             return null;
 
         return [
-            'uid'      => $verified->claims()->get('sub'),
-            'email'    => $verified->claims()->get('email'),
-            'name'     => $verified->claims()->get('name'),
-            'avatar'   => $verified->claims()->get('picture'),
+            'uid'           => $verified->claims()->get('sub'),
+            'email'         => $verified->claims()->get('email'),
+            'name'          => $verified->claims()->get('name'),
+            'avatar'        => $verified->claims()->get('picture'),
 
-            'provider' => $verified->claims()->get('firebase')['sign_in_provider'] ?? 'firebase',
+            'provider_name' => $verified->claims()->get('firebase')['sign_in_provider'] ?? 'firebase',
+            // 'provider_id' => $verified->claims()->get('firebase')['sign_in_provider'] ?? 'firebase',
         ];
     }
 }
