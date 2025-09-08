@@ -17,7 +17,7 @@ class ForceJsonResponse
     {
         $accept = strtolower($request->header('Accept'));
 
-        $allowedRoutes = ['docs*', 'preview/*'];
+        $allowedRoutes = ['docs*', 'preview*'];
 
         // If Accept header is present, not JSON, and route doesn't match any allowed pattern
         if (
