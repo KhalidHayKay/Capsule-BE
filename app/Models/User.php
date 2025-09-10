@@ -54,6 +54,10 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
             'password'          => 'string',
         ];
     }
+    public function socialAccounts()
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
 
     public function makeToken()
     {

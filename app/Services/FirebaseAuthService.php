@@ -33,13 +33,21 @@ class FirebaseAuthService
         if (! $verified)
             return null;
 
-        return [
-            'uid'      => $verified->claims()->get('sub'),
-            'email'    => $verified->claims()->get('email'),
-            'name'     => $verified->claims()->get('name'),
-            'avatar'   => $verified->claims()->get('picture'),
+        $providerName = $verified->claims()->get('firebase')['sign_in_provider'];
+        $providerId   = $verified->claims()->get('firebase')['identities'][$providerName][0];
 
-            'provider' => $verified->claims()->get('firebase')['sign_in_provider'] ?? 'firebase',
+        return [
+            'fb_uid'         => $verified->claims()->get('sub'),
+            'email'          => $verified->claims()->get('email'),
+            'email_verified' => $verified->claims()->get('email_verified'),
+            'name'           => $verified->claims()->get('name'),
+            'avatar'         => $verified->claims()->get('picture'),
+
+            // the social array must match the structure of the social_accounts table
+            'social'         => [
+                'provider_name' => $providerName,
+                'provider_id'   => $providerId,
+            ],
         ];
     }
 }

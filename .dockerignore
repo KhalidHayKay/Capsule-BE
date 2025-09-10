@@ -1,0 +1,13 @@
+*.md
+*.log
+.env
+.env.example
+.phpunit.result.cache
+.idea
+.vscode
+.git
+docker
+!docker/nginx/production.conf
+!docker/start.sh
+storage
+vendor
