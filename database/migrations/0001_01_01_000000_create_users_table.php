@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('password');
             $table->string('avatar')->nullable();
             $table->string('firebase_uid')->nullable()->unique();
-            $table->string('auth_provider')->nullable();
             $table->timestamp('email_verified_at')->nullable();
 
             $table->rememberToken();

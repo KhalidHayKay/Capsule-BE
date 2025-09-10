@@ -21,18 +21,16 @@ class AuthController extends Controller
 
         $response = $this->service->login($data);
 
-        return response()->json($response);
+        return response()->json($response->data, $response->code);
     }
 
     public function socialLogin(Request $request)
     {
-        $request->validate([
-            'firebase_token' => 'required|string',
-        ]);
+        $request->validate(['firebase_token' => 'required|string']);
 
         $response = $this->service->sLogin($request->firebase_token);
 
-        return response()->json($response, 201);
+        return response()->json($response->data, $response->code);
     }
 
     public function register(RegisterUserRequest $request): JsonResponse
@@ -41,16 +39,19 @@ class AuthController extends Controller
 
         $response = $this->service->register($data);
 
-        return response()->json($response, 201);
+        return response()->json($response->data, $response->code);
     }
 
     public function logout(Request $request, string|null $all = null): JsonResponse
     {
         $user = $request->user();
 
+        if (! $user) {
+            return response()->json(['message' => 'User not authenticated'], 401);
+        }
+
         $response = $this->service->logout($user, $all);
 
-        return response()->json($response, 200);
+        return response()->json($response->data, $response->code);
     }
-
 }

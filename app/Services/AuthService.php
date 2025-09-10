@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\Support\ServiceResponse;
+use Illuminate\Support\Str;
 use App\Mail\AccountCreated;
 use App\Models\SocialAccount;
 use App\Mail\EmailVerification;
@@ -10,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Resources\UserResource;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Database\Eloquent\Builder;
 
 class AuthService
 {
@@ -21,20 +22,18 @@ class AuthService
         $user = User::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            return response()->json(['message' => 'Invalid credentials',], 401);
+            return new ServiceResponse(['message' => 'Invalid credentials'], 401);
         }
 
         if (! $user->email_verified_at) {
             $this->sendEmailVerificationCode($user);
-
-            return ['message' => 'Email not verified. Check your email for verification code'];
+            return new ServiceResponse(
+                ['message' => 'Email not verified. A new verification code has been sent to your email.'],
+                403
+            );
         }
 
-        return [
-            'message' => 'Login successful',
-            'user'    => new UserResource($user),
-            'token'   => $user->makeToken()->plainTextToken,
-        ];
+        return $this->respondWithToken($user, 'Login successful');
     }
 
     public function sLogin(string $authToken)
@@ -42,61 +41,46 @@ class AuthService
         $userData = $this->firebase->getUserData($authToken);
 
         if (! $userData) {
-            return response()->json(['message' => 'Invalid Firebase token'], 401);
+            return new ServiceResponse(['message' => 'Invalid Firebase token'], 401);
         }
 
-        // Step 1: Check if social account exists
-        $account = SocialAccount::firstOrcreate(
+        $account = SocialAccount::where($userData['social'])->first();
+
+        if ($account) {
+            return $this->respondWithToken($account->user, 'Login successful');
+        }
+
+        // Find or create user (since social account does not exist)
+        $user = User::firstOrCreate(
+            ['email' => $userData['email']],
             [
-                'provider_id'   => $userData['uid'],
-                'provider_name' => $userData['provider_name'],
-            ],
-            [
-                'updated_at' => now(),
+                'name'              => $userData['name'] ?? $userData['email'],
+                'password'          => bcrypt(Str::random(24)),
+                'avatar'            => $userData['avatar'] ?? null,
+                'firebase_uid'      => $userData['fb_uid'],
+                'email_verified_at' => now(),
             ]
         );
 
-        if ($account->wasRecentlyCreated) {
-            $user = $account->user->firstOrCreate(
-                ['email' => $userData['email']],
-                [
-                    'name'              => $userData['name'] ?? $userData['email'],
-                    'password'          => bcrypt(Str::random(24)), // random password for fallback
-                    'avatar'            => $userData['avatar'] ?? null,
-                    'firebase_uid'      => $userData['uid'],
-                    'auth_provider'     => $userData['provider'],
-                    'email_verified_at' => now(),
-                ]
-            );
+        // Linking of social account to newly created user
+        $user->socialAccounts()->create($userData['social']);
 
-        } else {
-            $user         = $account->user;
-            $newlyCreated = false;
-
-            $newlyCreated = $user->wasRecentlyCreated;
-
-            // Step 3: Link the social account
-            $user->socialAccounts()->updateOrCreate(
-                [
-                    'provider_name' => $userData['provider_name'],
-                    'provider_id'   => $userData['uid'],
-                ],
-                ['updated_at' => now()]
-            );
-
-            // Optional: send account created email
-            if ($newlyCreated) {
-                Mail::to($user->email)->send(new AccountCreated($user->name));
-            }
+        if ($user->wasRecentlyCreated) {
+            Mail::to($user->email)->send(new AccountCreated($user->name));
+            return $this->respondWithToken($user, 'Registration successful');
         }
 
-        // Step 4: Return token
-        return [
-            'message' => $newlyCreated ? 'User registered successfully' : 'Login successful',
-            'user'    => new UserResource($user),
-            'token'   => $user->createToken()->plainTextToken->plainTextToken,
-        ];
+        if (! $user->email_verified_at && $userData['email_verified']) {
+            $user->email_verified_at = now();
+        }
 
+        if (! $user->avatar && $userData['avatar']) {
+            $user->avatar = $userData['avatar'];
+        }
+
+        $user->save();
+
+        return $this->respondWithToken($user, 'Login successful');
     }
 
     public function register(array $data)
@@ -107,28 +91,19 @@ class AuthService
 
         $this->sendEmailVerificationCode($user);
 
-        return [
-            'message' => 'User registered successfully. Check email for verification code',
-            'user'    => new UserResource($user),
-            'token'   => $user->makeToken()->plainTextToken,
-        ];
+        return $this->respondWithToken($user, 'Registration successful. Check your email for verification code');
     }
 
     public function logout(User $user, string $all)
     {
-        if (! $user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-
         if ($all === 'all') {
             $user->tokens()->delete();
-
-            return ['message' => 'Logged out from all devices'];
+            return new ServiceResponse(['message' => 'Logged out from all devices']);
         }
 
         $user->currentAccessToken->delete();
 
-        return ['message' => 'Logged out successfully'];
+        return new ServiceResponse(['message' => 'Logged out successfully']);
     }
 
     private function sendEmailVerificationCode(User $user)
@@ -158,5 +133,18 @@ class AuthService
         }
 
         return $code;
+    }
+
+    protected function respondWithToken(User $user, string $message)
+    {
+        return new ServiceResponse([
+            'message' => $message,
+            'user'    => new UserResource($user),
+            'token'   => [
+                'access' => $user->createToken('auth_token')->plainTextToken,
+                'type'   => 'Bearer',
+            ],
+
+        ], 201);
     }
 }
