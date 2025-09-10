@@ -28,7 +28,7 @@ WORKDIR /var/www
 COPY composer.json composer.lock ./
 
 # Install dependencies
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # Copy the rest of the source
 COPY . .
@@ -36,8 +36,9 @@ COPY . .
 # Permissions
 RUN chown -R www-data:www-data . && chmod -R 755 .
 
-# Clear caches
-RUN php artisan config:clear \
+# Artisan optimizations
+RUN composer run-script post-autoload-dump \
+    && php artisan config:clear \
     && php artisan route:clear
 
 # Copy nginx config
