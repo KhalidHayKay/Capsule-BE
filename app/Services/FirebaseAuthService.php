@@ -12,8 +12,15 @@ class FirebaseAuthService
 
     public function __construct()
     {
+        $envPath = env('FIREBASE_CREDENTIALS');
+
+        // If path is relative, prepend base_path()
+        $credentialsPath = str_starts_with($envPath, '/')
+            ? $envPath
+            : base_path($envPath);
+
         $this->auth = (new Factory)
-            ->withServiceAccount(config('firebase.credentials'))
+            ->withServiceAccount($credentialsPath)
             ->createAuth();
     }
 
